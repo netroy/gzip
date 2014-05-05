@@ -27,7 +27,7 @@ var serveGzip = func(w http.ResponseWriter, r *http.Request, c martini.Context) 
 	gz := gzip.NewWriter(w)
 	defer gz.Close()
 
-	gzw := gzipResponseWriter{gz, w.(martini.ResponseWriter)}
+	gzw := &gzipResponseWriter{gz, w.(martini.ResponseWriter), 0}
 	c.MapTo(gzw, (*http.ResponseWriter)(nil))
 
 	c.Next()
@@ -44,12 +44,24 @@ func All() martini.Handler {
 type gzipResponseWriter struct {
 	w *gzip.Writer
 	martini.ResponseWriter
+	status int
+}
+
+func (grw *gzipResponseWriter) WriteHeader(status int) {
+	grw.status = status
 }
 
 func (grw gzipResponseWriter) Write(p []byte) (int, error) {
-	if len(grw.Header().Get(HeaderContentType)) == 0 {
-		grw.Header().Set(HeaderContentType, http.DetectContentType(p))
+	rw := grw.ResponseWriter
+	if !rw.Written() {
+		status := grw.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		if len(grw.Header().Get(HeaderContentType)) == 0 {
+			grw.Header().Set(HeaderContentType, http.DetectContentType(p))
+		}
+		rw.WriteHeader(status)
 	}
-
 	return grw.w.Write(p)
 }
