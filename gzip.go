@@ -58,8 +58,9 @@ func (grw gzipResponseWriter) Write(p []byte) (int, error) {
 		if status == 0 {
 			status = http.StatusOK
 		}
-		if len(grw.Header().Get(HeaderContentType)) == 0 {
-			grw.Header().Set(HeaderContentType, http.DetectContentType(p))
+		headers := grw.Header()
+		if headers != nil && len(headers.Get(HeaderContentType)) == 0 {
+			headers.Set(HeaderContentType, http.DetectContentType(p))
 		}
 		rw.WriteHeader(status)
 	}
